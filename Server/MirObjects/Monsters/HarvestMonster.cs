@@ -5,7 +5,7 @@ using Server.MirDatabase;
 using S = ServerPackets;
 
 namespace Server.MirObjects.Monsters
-{
+{    
     public class HarvestMonster : MonsterObject
     {
         protected short Quality;
@@ -47,7 +47,7 @@ namespace Server.MirObjects.Monsters
                     _drops = null;
                     Broadcast(new S.ObjectHarvested { ObjectID = ObjectID, Direction = Direction, Location = CurrentLocation });
                 }
-                else player.ReceiveChat("你不能携带更多物品了。", ChatType.System);
+                else player.ReceiveChat("You cannot carry anymore.", ChatType.System);
 
                 return true;
             }
@@ -81,7 +81,7 @@ namespace Server.MirObjects.Monsters
 
             if (_drops.Count == 0)
             {
-                player.ReceiveChat("什么都没有找到。", ChatType.System);
+                player.ReceiveChat("Nothing was found.", ChatType.System);
                 Harvested = true;
                 _drops = null;
                 Broadcast(new S.ObjectHarvested { ObjectID = ObjectID, Direction = Direction, Location = CurrentLocation });

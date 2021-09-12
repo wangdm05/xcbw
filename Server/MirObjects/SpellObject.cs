@@ -29,8 +29,8 @@ namespace Server.MirObjects
         }
 
         public long TickTime, StartTime;
-        public PlayerObject Caster;
-        public int Value, TickSpeed;
+        public MapObject Caster;
+        public int Value, TickSpeed, BonusDmg;
         public Spell Spell;
         public Point CastLocation;
         public bool Show, Decoration;
@@ -40,15 +40,11 @@ namespace Server.MirObjects
         public int ExplosiveTrapCount;
         public bool DetonatedTrap;
 
-        //Portal
-        public Map ExitMap;
-        public Point ExitCoord;
-
-        public override uint Health
+        public override int Health
         {
             get { throw new NotSupportedException(); }
         }
-        public override uint MaxHealth
+        public override int MaxHealth
         {
             get { throw new NotSupportedException(); }
         }
@@ -71,8 +67,8 @@ namespace Server.MirObjects
 
                 if (Spell == Spell.Reincarnation && Caster != null)
                 {
-                    Caster.ReincarnationReady = true;
-                    Caster.ReincarnationExpireTime = Envir.Time + 6000;
+                    ((PlayerObject)Caster).ReincarnationReady = true;
+                    ((PlayerObject)Caster).ReincarnationExpireTime = Envir.Time + 6000;
                 }
 
                 CurrentMap.RemoveObject(this);
@@ -80,14 +76,24 @@ namespace Server.MirObjects
                 return;
             }
 
-            if (Spell == Spell.Reincarnation && !Caster.ActiveReincarnation)
+            if (Spell == Spell.FireWall)
+            {
+                if (CurrentMap != Caster?.CurrentMap)
+                {
+                    CurrentMap.RemoveObject(this);
+                    Despawn();
+                    return;
+                }
+            }
+
+            if (Spell == Spell.Reincarnation && !((PlayerObject)Caster).ActiveReincarnation)
             {
                 CurrentMap.RemoveObject(this);
                 Despawn();
                 return;
             }
 
-            if (Spell == Spell.ExplosiveTrap && FindObject(Caster.ObjectID, 20) == null && Caster != null)
+            if (Spell == Spell.ExplosiveTrap && Caster != null && !Functions.InRange(CurrentLocation, Caster.CurrentLocation, 15))
             {
                 CurrentMap.RemoveObject(this);
                 Despawn();
@@ -99,7 +105,9 @@ namespace Server.MirObjects
 
             Cell cell = CurrentMap.GetCell(CurrentLocation);
             for (int i = 0; i < cell.Objects.Count; i++)
+            {
                 ProcessSpell(cell.Objects[i]);
+            }
 
             if ((Spell == Spell.MapLava) || (Spell == Spell.MapLightning)) Value = 0;
         }
@@ -109,111 +117,251 @@ namespace Server.MirObjects
             switch (Spell)
             {
                 case Spell.FireWall:
-                    if (ob.Race != ObjectType.Player && ob.Race != ObjectType.Monster) return;
-                    if (ob.Dead) return;
-
-                    if (!ob.IsAttackTarget(Caster)) return;
-                    ob.Attacked(Caster, Value, DefenceType.MAC, false);
-                    break;
-                case Spell.Healing: //SafeZone
-                    if (ob.Race != ObjectType.Player && (ob.Race != ObjectType.Monster || ob.Master == null || ob.Master.Race != ObjectType.Player)) return;
-                    if (ob.Dead || ob.HealAmount != 0 || ob.PercentHealth == 100) return;
-
-                    ob.HealAmount += 25;
-                    Broadcast(new S.ObjectEffect {ObjectID = ob.ObjectID, Effect = SpellEffect.Healing});
-                    break;
-                case Spell.PoisonCloud:
-                    if (ob.Race != ObjectType.Player && ob.Race != ObjectType.Monster) return;
-                    if (ob.Dead) return;              
-
-                    if (!ob.IsAttackTarget(Caster)) return;
-                    ob.Attacked(Caster, Value, DefenceType.MAC, false);
-                    if (!ob.Dead)
-                    ob.ApplyPoison(new Poison
-                        {
-                            Duration = 12,//15,
-                            Owner = Caster,
-                            PType = PoisonType.Green,
-                            TickSpeed = 1000,//2000,
-                            Value = (Caster.MaxSC + Caster.MinSC) / 2//Value /20
-                        }, Caster, false, false);
-                    break;
-                case Spell.Blizzard:
-                    if (ob.Race != ObjectType.Player && ob.Race != ObjectType.Monster) return;
-                    if (ob.Dead) return;
-                    if (Caster != null && Caster.ActiveBlizzard == false) return;
-                    if (!ob.IsAttackTarget(Caster)) return;
-                    ob.Attacked(Caster, Value, DefenceType.MAC, false);
-                    if (!ob.Dead && Envir.Random.Next(8) == 0)
-                        ob.ApplyPoison(new Poison
-                        {
-                            Duration = 5 + Envir.Random.Next(Caster.Freezing),
-                            Owner = Caster,
-                            PType = PoisonType.Slow,
-                            TickSpeed = 2000,
-                        }, Caster);
-                    break;
-                case Spell.MeteorStrike:
-                    if (ob.Race != ObjectType.Player && ob.Race != ObjectType.Monster) return;
-                    if (ob.Dead) return;
-                    if (Caster != null && Caster.ActiveBlizzard == false) return;
-                    if (!ob.IsAttackTarget(Caster)) return;
-                    ob.Attacked(Caster, Value, DefenceType.MAC, false);
-                    break;
-                case Spell.ExplosiveTrap:
-                    if (ob.Race != ObjectType.Player && ob.Race != ObjectType.Monster) return;
-                    if (ob.Dead) return;
-                    if (!ob.IsAttackTarget(Caster)) return;
-                    if (DetonatedTrap) return;//make sure explosion happens only once
-                    DetonateTrapNow();
-                    ob.Attacked(Caster, Value, DefenceType.MAC, false);
-                    break;
-                case Spell.MapLava:
-                    if (ob is PlayerObject)
                     {
-                        PlayerObject pOb = (PlayerObject)ob;
-                        if (pOb.Account.AdminAccount && pOb.Observer)
-                            return;
+                        if (ob.Race != ObjectType.Player && ob.Race != ObjectType.Monster) return;
+                        if (ob.Dead) return;
+
+                        if (!ob.IsAttackTarget(Caster)) return;
+                        ob.Attacked(((PlayerObject)Caster), Value, DefenceType.MAC, false);
                     }
                     break;
-                case Spell.MapLightning:
-                    if (ob is PlayerObject)
+                case Spell.Healing: //SafeZone
                     {
-                        PlayerObject pOb = (PlayerObject)ob;
-                        if (pOb.Account.AdminAccount && pOb.Observer)
-                            return;
+                        if (ob.Race != ObjectType.Player && (ob.Race != ObjectType.Monster || ob.Master == null || ob.Master.Race != ObjectType.Player)) return;
+                        if (ob.Dead || ob.HealAmount != 0 || ob.PercentHealth == 100) return;
+
+                        ob.HealAmount += 25;
+                        Broadcast(new S.ObjectEffect { ObjectID = ob.ObjectID, Effect = SpellEffect.Healing });
+                    }
+                    break;
+                case Spell.PoisonCloud:
+                    {
+                        if (ob.Race != ObjectType.Player && ob.Race != ObjectType.Monster) return;
+                        if (ob.Dead) return;
+
+                        if (!ob.IsAttackTarget(Caster)) return;
+                        ob.Attacked(((PlayerObject)Caster), Value, DefenceType.MAC, false);
+                        if (!ob.Dead)
+                            ob.ApplyPoison(new Poison
+                            {
+                                Duration = 12,
+                                Owner = Caster,
+                                PType = PoisonType.Green,
+                                TickSpeed = TickSpeed,
+                                Value = (Caster.Stats[Stat.MinSC] + Caster.Stats[Stat.MaxSC]) / 2 + BonusDmg
+                            }, Caster, false, false);
+                    }
+                    break;
+                case Spell.Blizzard:
+                    {
+                        if (ob.Race != ObjectType.Player && ob.Race != ObjectType.Monster) return;
+                        if (ob.Dead) return;
+                        if (Caster != null && ((PlayerObject)Caster).ActiveBlizzard == false) return;
+                        if (!ob.IsAttackTarget(Caster)) return;
+                        ob.Attacked(((PlayerObject)Caster), Value, DefenceType.MAC, false);
+                        if (!ob.Dead && Envir.Random.Next(8) == 0)
+                            ob.ApplyPoison(new Poison
+                            {
+                                Duration = 5 + Envir.Random.Next(Caster.Stats[Stat.Freezing]),
+                                Owner = Caster,
+                                PType = PoisonType.Slow,
+                                TickSpeed = 2000,
+                            }, Caster);
+                    }
+                    break;
+                case Spell.MeteorStrike:
+                    {
+                        if (ob.Race != ObjectType.Player && ob.Race != ObjectType.Monster) return;
+                        if (ob.Dead) return;
+                        if (Caster != null && ((PlayerObject)Caster).ActiveBlizzard == false) return;
+                        if (!ob.IsAttackTarget(Caster)) return;
+                        ob.Attacked(((PlayerObject)Caster), Value, DefenceType.MAC, false);
+                    }
+                    break;
+                case Spell.ExplosiveTrap:
+                    {
+                        if (ob.Race != ObjectType.Player && ob.Race != ObjectType.Monster) return;
+                        if (ob.Dead) return;
+                        if (!ob.IsAttackTarget(Caster)) return;
+                        if (DetonatedTrap) return;
+                        DetonateTrapNow();
+                        ob.Attacked(((PlayerObject)Caster), Value, DefenceType.MAC, false);
+                    }
+                    break;
+                case Spell.MapLava:
+                case Spell.MapLightning:
+                    {
+                        if (ob is PlayerObject player)
+                        {
+                            if (player.Account.AdminAccount && player.Observer) return;
+                            player.Struck(Value, DefenceType.MAC);
+                        }                 
                     }
                     break;
                 case Spell.MapQuake1:
                 case Spell.MapQuake2:
-                    if (Value == 0) return;
-                    if (ob.Race != ObjectType.Player && ob.Race != ObjectType.Monster) return;
-                    if (ob.Dead) return;
-                    ob.Struck(Value, DefenceType.MAC);
-                    break;
-
-                case Spell.Portal:
-                    if (ob.Race != ObjectType.Player) return;
-                    if (Caster != ob && (Caster == null || (Caster.GroupMembers == null) || (!Caster.GroupMembers.Contains((PlayerObject)ob)))) return;
-
-                    if (ExitMap == null) return;
-
-                    MirDirection dir = ob.Direction;
-
-                    Point newExit = Functions.PointMove(ExitCoord, dir, 1);
-
-                    if (!ExitMap.ValidPoint(newExit)) return;
-
-                    ob.Teleport(ExitMap, newExit, false);
-
-                    Value = Value - 1;
-
-                    if(Value < 1)
                     {
-                        ExpireTime = Envir.Time;
-                        return;
+                        if (Value == 0) return;
+                        if (ob.Race != ObjectType.Player && ob.Race != ObjectType.Monster) return;
+                        if (ob.Dead) return;
+                        ob.Struck(Value, DefenceType.MAC);
                     }
-                    
+                    break;
+                case Spell.GeneralMeowMeowThunder:
+                    {
+                        if (ob.Race != ObjectType.Player && ob.Race != ObjectType.Monster) return;
+                        if (ob.Dead) return;
+                        if (ob == Caster) return;
+                        if (!ob.IsAttackTarget(Caster)) return;
+
+                        if (Value == 0) return;
+                        ob.Struck(Value, DefenceType.MAC);
+                    }
+                    break;
+                case Spell.TreeQueenRoot:
+                    {
+                        if (ob.Race != ObjectType.Player && ob.Race != ObjectType.Monster) return;
+                        if (ob.Dead) return;
+                        if (ob == Caster) return;
+                        if (!ob.IsAttackTarget(Caster)) return;
+
+                        if (Value == 0) return;
+                        ob.Struck(Value, DefenceType.MAC);
+                    }
+                    break;
+                case Spell.TreeQueenMassRoots:
+                    {
+                        if (ob.Race != ObjectType.Player && ob.Race != ObjectType.Monster) return;
+                        if (ob.Dead) return;
+                        if (ob == Caster) return;
+                        if (!ob.IsAttackTarget(Caster)) return;
+
+                        if (Value == 0) return;
+                        ob.Struck(Value, DefenceType.MAC);
+                    }
+                    break;
+                case Spell.TreeQueenGroundRoots:
+                    {
+                        if (ob.Race != ObjectType.Player && ob.Race != ObjectType.Monster) return;
+                        if (ob.Dead) return;
+                        if (ob == Caster) return;
+                        if (!ob.IsAttackTarget(Caster)) return;
+
+                        ob.Struck(Value, DefenceType.MAC);
+
+                        if (Envir.Random.Next(3) > 0)
+                        {
+                            ob.ApplyPoison(new Poison { PType = PoisonType.Paralysis, Duration = 5, TickSpeed = 1000 }, this);
+                        }
+                    }
+                    break;
+                case Spell.StoneGolemQuake:
+                    {
+                        if (ob.Race != ObjectType.Player && ob.Race != ObjectType.Monster) return;
+                        if (ob.Dead) return;
+                        if (ob == Caster) return;
+                        if (!ob.IsAttackTarget(Caster)) return;
+
+                        if (Value == 0) return;
+                        ob.Struck(Value, DefenceType.AC);
+                    }
+                    break;
+                case Spell.EarthGolemPile:
+                    {
+                        if (ob.Race != ObjectType.Player && ob.Race != ObjectType.Monster) return;
+                        if (ob.Dead) return;
+                        if (ob == Caster) return;
+                        if (!ob.IsAttackTarget(Caster)) return;
+
+                        if (Value == 0) return;
+                        ob.Struck(Value, DefenceType.AC);
+                    }
+                    break;
+                case Spell.TucsonGeneralRock:
+                    {
+                        if (ob.Race != ObjectType.Player && ob.Race != ObjectType.Monster) return;
+                        if (ob.Dead) return;
+                        if (ob == Caster) return;
+                        if (!ob.IsAttackTarget(Caster)) return;
+
+                        if (Value == 0) return;
+                        ob.Struck(Value, DefenceType.AC);
+                    }
+                    break;
+                case Spell.Portal:
+                    {
+                        if (ob.Race != ObjectType.Player) return;
+                        if (Caster != ob && (Caster == null || (Caster.GroupMembers == null) || (!Caster.GroupMembers.Contains((PlayerObject)ob)))) return;
+
+                        var portal = Envir.Spells.SingleOrDefault(ob => ob != this && ob.Node != null
+                            && ob.Spell == Spell.Portal
+                            && ob.Caster == Caster);
+
+                        if (portal != null)
+                        {
+                            Point newExit = Functions.PointMove(portal.CurrentLocation, ob.Direction, 1);
+
+                            if (!portal.CurrentMap.ValidPoint(newExit)) return;
+
+                            ob.Teleport(portal.CurrentMap, newExit, false);
+                        }
+
+                        Value -= 1;
+
+                        if (Value < 1)
+                        {
+                            ExpireTime = 0;
+                        }
+                    }
+                    break;
+                case Spell.FlyingStatueIceTornado:
+                    {
+                        if (ob.Race != ObjectType.Player && ob.Race != ObjectType.Monster) return;
+                        if (ob.Dead) return;
+                        if (ob == Caster) return;
+                        if (!ob.IsAttackTarget(Caster)) return;
+
+                        ob.Struck(Value, DefenceType.MAC);
+
+                        if (Envir.Random.Next(8) == 0)
+                        {
+                            ob.ApplyPoison(new Poison { PType = PoisonType.Slow, Duration = 5, TickSpeed = 1000 }, this);
+                        }
+                    }
+                    break;
+                case Spell.DarkOmaKingNuke:
+                    {
+                        if (ob.Race != ObjectType.Player && ob.Race != ObjectType.Monster) return;
+                        if (ob.Dead) return;
+                        if (ob == Caster) return;
+                        if (!ob.IsAttackTarget(Caster)) return;
+
+                        ob.Struck(Value, DefenceType.AC);
+                        ob.ApplyPoison(new Poison { PType = PoisonType.Dazed, Duration = 5, TickSpeed = 1000 }, this);
+                    }
+                    break;
+                case Spell.HornedSorcererDustTornado:
+                    {
+                        if (ob.Race != ObjectType.Player && ob.Race != ObjectType.Monster) return;
+                        if (ob.Dead) return;
+                        if (ob == Caster) return;
+                        if (!ob.IsAttackTarget(Caster)) return;
+
+                        if (Value == 0) return;
+                        ob.Struck(Value, DefenceType.AC);
+                    }
+                    break;
+                case Spell.HornedCommanderRockFall:
+                case Spell.HornedCommanderRockSpike:
+                    {
+                        if (ob.Race != ObjectType.Player && ob.Race != ObjectType.Monster) return;
+                        if (ob.Dead) return;
+                        if (ob == Caster) return;
+                        if (!ob.IsAttackTarget(Caster)) return;
+
+                        if (Value == 0) return;
+                        ob.Struck(Value, DefenceType.AC);
+                    }
                     break;
             }
         }
@@ -320,6 +468,15 @@ namespace Server.MirObjects
                 case Spell.PoisonCloud:
                 case Spell.Blizzard:
                 case Spell.MeteorStrike:
+                case Spell.StoneGolemQuake:
+                case Spell.EarthGolemPile:
+                case Spell.TreeQueenMassRoots:
+                case Spell.TreeQueenGroundRoots:
+                case Spell.FlyingStatueIceTornado:
+                case Spell.DarkOmaKingNuke:
+                case Spell.HornedSorcererDustTornado:
+                case Spell.HornedCommanderRockFall:
+                case Spell.HornedCommanderRockSpike:
                     if (!Show)
                         return null;
 
@@ -339,7 +496,6 @@ namespace Server.MirObjects
                         Direction = Direction,
                         Param = DetonatedTrap
                     };
-
                 default:
                     return new S.ObjectSpell
                     {
@@ -368,34 +524,46 @@ namespace Server.MirObjects
         {
             throw new NotSupportedException();
         }
+
+        public override void Spawned()
+        {
+            base.Spawned();
+
+            Envir.Spells.Add(this);
+        }
+
         public override void Despawn()
         {
             base.Despawn();
 
+            Envir.Spells.Remove(this);
+
             if (Spell == Spell.Reincarnation && Caster != null && Caster.Node != null)
             {
-                Caster.ActiveReincarnation = false;
-                Caster.Enqueue(new S.CancelReincarnation { });
+                ((PlayerObject)Caster).ActiveReincarnation = false;
+                ((PlayerObject)Caster).Enqueue(new S.CancelReincarnation { });
             }
 
             if (Spell == Spell.ExplosiveTrap && Caster != null)
-                Caster.ExplosiveTrapDetonated(ExplosiveTrapID, ExplosiveTrapCount);
+            {
+                var linkedTraps = CurrentMap.GetSpellObjects(Spell.ExplosiveTrap, Owner).Where(x => x.ExplosiveTrapID == ExplosiveTrapID);
+
+                foreach (var trap in linkedTraps)
+                {
+                    trap.DetonateTrapNow();
+                }
+            }
 
             if (Spell == Spell.Portal && Caster != null)
             {
-                if (Caster.PortalObjectsArray[0] == this)
-                {
-                    Caster.PortalObjectsArray[0] = null;
+                var portal = Envir.Spells.SingleOrDefault(ob => ob.Node != null && ob != this
+                    && ob.Spell == Spell.Portal    
+                    && ob.Caster == Caster);
 
-                    if (Caster.PortalObjectsArray[1] != null)
-                    {
-                        Caster.PortalObjectsArray[1].ExpireTime = 0;
-                        Caster.PortalObjectsArray[1].Process();
-                    }
-                }
-                else
+                if (portal != null)
                 {
-                    Caster.PortalObjectsArray[1] = null;
+                    portal.ExpireTime = 0;
+                    portal.Process();
                 }
             }
         }
@@ -404,6 +572,7 @@ namespace Server.MirObjects
         {
             if ((Spell != Spell.ExplosiveTrap) || (Caster == null))
                 base.BroadcastInfo();
+
             Packet p;
             if (CurrentMap == null) return;
 
@@ -413,9 +582,11 @@ namespace Server.MirObjects
                 if (Functions.InRange(CurrentLocation, player.CurrentLocation, Globals.DataRange))
                 {
                     if ((Caster == null) || (player == null)) continue;
-                    if ((player == Caster) || (player.IsFriendlyTarget(Caster)))
+
+                    if ((player == Caster) || player.IsFriendlyTarget(Caster))
                     {
                         p = GetInfo();
+
                         if (p != null)
                             player.Enqueue(p);
                     }

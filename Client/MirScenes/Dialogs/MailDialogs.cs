@@ -14,7 +14,9 @@ namespace Client.MirScenes.Dialogs
 {
     public class MailListDialog : MirImageControl
     {
+        MirImageControl TitleLabel;
         MirButton HelpButton, CloseButton;
+        MirLabel TitleTypeLabel, TitleSenderLabel, TitleMessageLabel;
         //Send / Reply (Can only reply if index exists, button will disapear if not) / Read / Delete / Block List / Bug Report (new system??)
 
         MirLabel PageLabel;
@@ -38,11 +40,49 @@ namespace Client.MirScenes.Dialogs
             Sort = true;
             Location = new Point((Settings.ScreenWidth - Size.Width) - 150, 5);
 
+            TitleLabel = new MirImageControl
+            {
+                Index = 7,
+                Library = Libraries.Title,
+                Location = new Point(18, 9),
+                Parent = this
+            };
+
+            TitleTypeLabel = new MirLabel
+            {
+                Text = "TYPE",
+                Parent = this,
+                Font = new Font(Settings.FontName, Settings.FontSize - 1, FontStyle.Italic),
+                DrawFormat = TextFormatFlags.VerticalCenter | TextFormatFlags.HorizontalCenter,
+                Size = new Size(37, 19),
+                Location = new Point(8, 34)
+            };
+
+            TitleSenderLabel = new MirLabel
+            {
+                Text = "SENDER",
+                Parent = this,
+                Font = new Font(Settings.FontName, Settings.FontSize - 1, FontStyle.Italic),
+                DrawFormat = TextFormatFlags.VerticalCenter | TextFormatFlags.HorizontalCenter,
+                Size = new Size(132, 19),
+                Location = new Point(47, 34)
+            };
+
+            TitleMessageLabel = new MirLabel
+            {
+                Text = "MESSAGE",
+                Parent = this,
+                Font = new Font(Settings.FontName, Settings.FontSize - 1, FontStyle.Italic),
+                DrawFormat = TextFormatFlags.VerticalCenter | TextFormatFlags.HorizontalCenter,
+                Size = new Size(122, 19),
+                Location = new Point(181, 34)
+            };
+
             CloseButton = new MirButton
             {
                 HoverIndex = 361,
                 Index = 360,
-                Location = new Point(Size.Width - 27, 3),
+                Location = new Point(Size.Width - 24, 3),
                 Library = Libraries.Prguse2,
                 Parent = this,
                 PressedIndex = 362,
@@ -126,11 +166,11 @@ namespace Client.MirScenes.Dialogs
                 Parent = this,
                 Location = new Point(75, 414),
                 Sound = SoundList.ButtonA,
-                Hint = "发送"
+                Hint = GameLanguage.Send
             };
             SendButton.Click += (o, e) =>
                 {
-                    MirInputBox inputBox = new MirInputBox("请输入收件人名字。");
+                    MirInputBox inputBox = new MirInputBox(GameLanguage.EnterMailToName);
 
                     inputBox.OKButton.Click += (o1, e1) =>
                     {
@@ -152,7 +192,7 @@ namespace Client.MirScenes.Dialogs
                 Parent = this,
                 Location = new Point(102, 414),
                 Sound = SoundList.ButtonA,
-                Hint = "回复"
+                Hint = GameLanguage.Reply
             };
             ReplyButton.Click += (o, e) =>
             {
@@ -170,7 +210,7 @@ namespace Client.MirScenes.Dialogs
                 Parent = this,
                 Location = new Point(129, 414),
                 Sound = SoundList.ButtonA,
-                Hint = "阅读"
+                Hint = GameLanguage.Read
             };
             ReadButton.Click += (o, e) =>
             {
@@ -195,7 +235,7 @@ namespace Client.MirScenes.Dialogs
                 Parent = this,
                 Location = new Point(156, 414),
                 Sound = SoundList.ButtonA,
-                Hint = "删除"
+                Hint = GameLanguage.Delete
             };
             DeleteButton.Click += (o, e) =>
             {
@@ -203,7 +243,7 @@ namespace Client.MirScenes.Dialogs
 
                 if (SelectedMail.Items.Count > 0 || SelectedMail.Gold > 0)
                 {
-                    MirMessageBox messageBox = new MirMessageBox("这个包裹包含物品或金币,你确定要删除吗?", MirMessageBoxButtons.YesNo);
+                    MirMessageBox messageBox = new MirMessageBox("This parcel contains items or gold. Are you sure you want to delete it?", MirMessageBoxButtons.YesNo);
 
                     messageBox.YesButton.Click += (o1, e1) =>
                     {
@@ -229,7 +269,9 @@ namespace Client.MirScenes.Dialogs
                 Parent = this,
                 Location = new Point(183, 414),
                 Sound = SoundList.ButtonA,
-                Hint = "黑名单"
+                Hint = GameLanguage.BlockList,
+                GrayScale = true,
+                Enabled = false
             };
 
             BugReportButton = new MirButton
@@ -241,7 +283,9 @@ namespace Client.MirScenes.Dialogs
                 Parent = this,
                 Location = new Point(210, 414),
                 Sound = SoundList.ButtonA,
-                Hint = "BUG反馈"
+                Hint = "Report Bug",
+                GrayScale = true,
+                Enabled = false
             };
             #endregion
 
@@ -354,7 +398,7 @@ namespace Client.MirScenes.Dialogs
             }
         }
 
-        public void Show()
+        public override void Show()
         {
             if (Visible) return;
             Visible = true;
@@ -362,7 +406,7 @@ namespace Client.MirScenes.Dialogs
             UpdateInterface();
         }
 
-        public void Hide()
+        public override void Hide()
         {
             if (!Visible) return;
             Visible = false;
@@ -634,18 +678,12 @@ namespace Client.MirScenes.Dialogs
             CancelButton.Click += (o, e) => Hide();
         }
 
-        public void Hide()
-        {
-            if (!Visible) return;
-            Visible = false;
-        }
-
-        public void ComposeMail(string recipientName)
+        public void ComposeMail(string recipientName, string message = "")
         {
             if (string.IsNullOrEmpty(recipientName)) return;
 
             RecipientNameLabel.Text = recipientName;
-            MessageTextBox.Text = string.Empty;
+            MessageTextBox.Text = message;
 
             MessageTextBox.SetFocus();
 
@@ -777,7 +815,7 @@ namespace Client.MirScenes.Dialogs
             {
                 if (GameScene.SelectedCell == null && GameScene.Gold > 0)
                 {
-                    MirAmountBox amountBox = new MirAmountBox("发送金额:", 116, GameScene.Gold);
+                    MirAmountBox amountBox = new MirAmountBox("Send Amount:", 116, GameScene.Gold);
 
                     amountBox.OKButton.Click += (c, a) =>
                     {
@@ -829,7 +867,7 @@ namespace Client.MirScenes.Dialogs
             };
         }
 
-        public void Hide()
+        public override void Hide()
         {
             if (!Visible) return;
             Visible = false;
@@ -1072,12 +1110,6 @@ namespace Client.MirScenes.Dialogs
 
             Visible = true;
         }
-
-        public void Hide()
-        {
-            if (!Visible) return;
-            Visible = false;
-        }
     }
     public class MailReadParcelDialog : MirImageControl
     {
@@ -1243,12 +1275,6 @@ namespace Client.MirScenes.Dialogs
                     item.Item = null;
                 }
             }
-        }
-
-        public void Hide()
-        {
-            if (!Visible) return;
-            Visible = false;
         }
     }
 }

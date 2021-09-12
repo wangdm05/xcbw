@@ -72,7 +72,7 @@ namespace Client.MirScenes.Dialogs
                 if (GameScene.SelectedCell != null || GameScene.Gold <= 0)
                     return;
 
-                var amountBox = new MirAmountBox("租金:", 116, GameScene.Gold);
+                var amountBox = new MirAmountBox("Rental fee:", 116, GameScene.Gold);
 
                 amountBox.OKButton.Click += (c, a) =>
                 {
@@ -118,7 +118,7 @@ namespace Client.MirScenes.Dialogs
                         if (GameScene.SelectedCell != null || GameScene.Gold <= 0)
                             return;
 
-                        var amountBox = new MirAmountBox("租金:", 116, GameScene.Gold);
+                        var amountBox = new MirAmountBox("Rental fee:", 116, GameScene.Gold);
 
                         amountBox.OKButton.Click += (c, a) =>
                         {
@@ -142,7 +142,7 @@ namespace Client.MirScenes.Dialogs
         public void RefreshInterface()
         {
             _nameLabel.Text = GameScene.User.Name;
-            _rentalPriceLabel.Text = $"租金: {GameScene.User.RentalGoldAmount:###,###,##0}";
+            _rentalPriceLabel.Text = $"Rental Fee: {GameScene.User.RentalGoldAmount:###,###,##0}";
 
             GameScene.Scene.GuestItemRentingDialog.RefreshInterface();
             GameScene.Scene.GuestItemRentDialog.RefreshInterface();
@@ -188,16 +188,6 @@ namespace Client.MirScenes.Dialogs
         private static void CancelItemRental()
         {
             Network.Enqueue(new C.CancelItemRental());
-        }
-
-        private void Hide()
-        {
-            Visible = false;
-        }
-
-        private void Show()
-        {
-            Visible = true;
         }
     }
 
@@ -262,7 +252,7 @@ namespace Client.MirScenes.Dialogs
         public void RefreshInterface()
         {
             _nameLabel.Text = _guestName;
-            _rentalPriceLabel.Text = $"租金: {_guestGold:###,###,##0}";
+            _rentalPriceLabel.Text = $"Rental Fee: {_guestGold:###,###,##0}";
 
             Redraw();
         }
@@ -298,16 +288,6 @@ namespace Client.MirScenes.Dialogs
         {
             _lockButton.Index = 250;
             _guestGoldLocked = false;
-        }
-
-        private void Hide()
-        {
-            Visible = false;
-        }
-
-        public void Show()
-        {
-            Visible = true;
         }
     }
 }

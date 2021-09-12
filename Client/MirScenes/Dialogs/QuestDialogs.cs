@@ -141,7 +141,7 @@ namespace Client.MirScenes.Dialogs
 
                 if (Reward.SelectedItemIndex < 0 && SelectedQuest.QuestInfo.RewardsSelectItem.Count > 0)
                 {
-                    MirMessageBox messageBox = new MirMessageBox("你必须选择一个奖励物品。");
+                    MirMessageBox messageBox = new MirMessageBox("You must select a reward item.");
                     messageBox.Show();
                     return;
                 }
@@ -263,7 +263,7 @@ namespace Client.MirScenes.Dialogs
 
         }
 
-        public void Show()
+        public override void Show()
         {
             if (Visible) return;
             Visible = true;
@@ -275,7 +275,7 @@ namespace Client.MirScenes.Dialogs
             DisplayInfo();
         }
 
-        public void Hide()
+        public override void Hide()
         {
             if (!Visible) return;
             Visible = false;
@@ -593,7 +593,7 @@ namespace Client.MirScenes.Dialogs
             };
             _cancelButton.Click += (o, e) =>
             {
-                MirMessageBox messageBox = new MirMessageBox("你确定要放弃这个任务吗?", MirMessageBoxButtons.YesNo);
+                MirMessageBox messageBox = new MirMessageBox("Are you sure you want to cancel this quest?", MirMessageBoxButtons.YesNo);
 
                 messageBox.YesButton.Click += (o1, a) =>
                 {
@@ -642,17 +642,6 @@ namespace Client.MirScenes.Dialogs
             Show();
         }
 
-        private void Show()
-        {
-            if (Visible) return;
-            Visible = true;
-        }
-
-        public void Hide()
-        {
-            if (!Visible) return;
-            Visible = false;
-        }
     }
     public sealed class QuestDiaryDialog : MirImageControl
     {
@@ -784,18 +773,14 @@ namespace Client.MirScenes.Dialogs
             }
             TaskGroups.Clear();
         }
-        public void Show()
+        public override void Show()
         {
             if (Visible) return;
             Visible = true;
 
             DisplayQuests();
         }
-        public void Hide()
-        {
-            if (!Visible) return;
-            Visible = false;
-        }
+
         public void Toggle()
         {
             if (!Visible)
@@ -929,16 +914,6 @@ namespace Client.MirScenes.Dialogs
             Settings.SaveTrackedQuests(GameScene.User.Name);
         }
 
-        public void Hide()
-        {
-            if (!Visible) return;
-            Visible = false;
-        }
-        public void Show()
-        {
-            if (Visible) return;
-            Visible = true;
-        }
     }
 
     //Sub controls
@@ -1596,7 +1571,7 @@ namespace Client.MirScenes.Dialogs
     {
         public ItemInfo Item;
         public UserItem ShowItem;
-        public uint Count;
+        public ushort Count;
 
         public bool Selected;
         public bool Fixed;
@@ -1842,7 +1817,7 @@ namespace Client.MirScenes.Dialogs
 
             string name = Quest.QuestInfo.Name;
             string level = string.Format("Lv{0}", Quest.QuestInfo.MinLevelNeeded);
-            string state = quest.Completed ? "(已完成)" : "(进行中)";
+            string state = quest.Completed ? "(Complete)" : "(In Progress)";
 
             bool lowLevelQuest = (MapObject.User.Level - quest.QuestInfo.MinLevelNeeded) > 10;
 

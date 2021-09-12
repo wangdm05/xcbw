@@ -116,7 +116,7 @@ namespace Client.MirScenes.Dialogs
             if (Visible)
                 RequestRentedItems();
         }
-
+        
         public void ReceiveRentedItems(List<ItemRentalInformation> rentedItems)
         {
             for (var i = 0; i < _itemRows.Length; i++)

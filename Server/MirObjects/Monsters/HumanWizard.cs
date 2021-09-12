@@ -1,5 +1,6 @@
 ﻿using Server.MirDatabase;
 using S = ServerPackets;
+using System.Collections.Generic;
 
 namespace Server.MirObjects.Monsters
 {
@@ -37,14 +38,11 @@ namespace Server.MirObjects.Monsters
             ActionTime = Envir.Time + 300;
             AttackTime = Envir.Time + AttackSpeed;
 
-            int damage = GetAttackPower(MinMC, MaxMC);
+            int damage = GetAttackPower(Stats[Stat.MinMC], Stats[Stat.MaxMC]);
             if (damage == 0) return;
 
             DelayedAction action = new DelayedAction(DelayedType.Damage, Envir.Time + 500, Target, damage, DefenceType.MAC);
             ActionList.Add(action);
-
-            if (Target.Dead)
-                FindTarget();
         }
 
         protected override void ProcessAI()
@@ -54,7 +52,7 @@ namespace Server.MirObjects.Monsters
             if (Master != null && Master is PlayerObject && Envir.Time > DecreaseMPTime)
             {
                 DecreaseMPTime = Envir.Time + 1000;
-                //if (!Master.Dead) ((PlayerObject)Master).ChangeMP(-10);
+                if (!Master.Dead) ((PlayerObject)Master).ChangeMP(-10);
 
                 if (((PlayerObject)Master).MP <= 0) Die();
             }
@@ -123,7 +121,7 @@ namespace Server.MirObjects.Monsters
         {
             if (Master != null && Master is PlayerObject)
             {
-                ((PlayerObject)Master).ChangeMP(-Envir.Random.Next(10,21));
+                ((PlayerObject)Master).ChangeMP(amount);
                 return;
             }
             base.ChangeHP(amount);

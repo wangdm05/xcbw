@@ -53,12 +53,13 @@ namespace Server.MirObjects.Monsters
 
             MonsterInfo bInfo = new MonsterInfo
             {
-                HP = this.HP,
                 Image = Monster.EvilMirBody,
                 CanTame = false,
                 CanPush = false,
                 AutoRev = false
-            };        
+            };
+
+            bInfo.Stats[Stat.HP] = this.Stats[Stat.HP];
 
             foreach (var block in BlockArray)
             {
@@ -67,7 +68,7 @@ namespace Server.MirObjects.Monsters
 
                 if (!b.Spawn(this.CurrentMap, new Point(this.CurrentLocation.X + block.X, this.CurrentLocation.Y + block.Y)))
                 {
-                    SMain.EnqueueDebugging(string.Format("{3} blocking mob not spawned at {0} {1}:{2}", CurrentMap.Info.FileName, block.X, block.Y, Info.Name));
+                    MessageQueue.EnqueueDebugging(string.Format("{3} blocking mob not spawned at {0} {1}:{2}", CurrentMap.Info.FileName, block.X, block.Y, Info.Name));
                 }
             }
         }

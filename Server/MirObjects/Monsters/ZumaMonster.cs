@@ -10,7 +10,7 @@ using S = ServerPackets;
 
 namespace Server.MirObjects.Monsters
 {
-    class ZumaMonster : MonsterObject
+    public class ZumaMonster : MonsterObject
     {
         public bool Stoned = true;
         public bool AvoidFireWall = true;
@@ -46,13 +46,13 @@ namespace Server.MirObjects.Monsters
 
             base.ApplyPoison(p, Caster, NoResist, ignoreDefence);
         }
-        public override void AddBuff(Buff b)
+        public override Buff AddBuff(BuffType type, MapObject owner, int duration, Stats stats, bool refreshStats = true, params int[] values)
         {
-            if (Stoned) return;
+            if (Stoned) return null;
 
-            base.AddBuff(b);
+            return base.AddBuff(type, owner, duration, Stats, refreshStats, values);
         }
-        
+
         public override bool IsFriendlyTarget(PlayerObject ally)
         {
             if (Stoned) return false;
@@ -75,6 +75,7 @@ namespace Server.MirObjects.Monsters
 
             base.ProcessAI();
         }
+
         public void Wake()
         {
             if (!Stoned) return;
@@ -83,9 +84,9 @@ namespace Server.MirObjects.Monsters
             Broadcast(new S.ObjectShow { ObjectID = ObjectID });
             ActionTime = Envir.Time + 1000;
         }
+
         public void WakeAll(int dist)
         {
-
             for (int y = CurrentLocation.Y - dist; y <= CurrentLocation.Y + dist; y++)
             {
                 if (y < 0) continue;
@@ -152,17 +153,8 @@ namespace Server.MirObjects.Monsters
 
             if (Hidden)
             {
-                Hidden = false;
-
-                for (int i = 0; i < Buffs.Count; i++)
-                {
-                    if (Buffs[i].Type != BuffType.Hiding) continue;
-
-                    Buffs[i].ExpireTime = 0;
-                    break;
-                }
+                RemoveBuff(BuffType.Hiding);
             }
-
 
             CellTime = Envir.Time + 500;
             ActionTime = Envir.Time + 300;
@@ -171,8 +163,6 @@ namespace Server.MirObjects.Monsters
             InSafeZone = CurrentMap.GetSafeZone(CurrentLocation) != null;
 
             Broadcast(new S.ObjectWalk { ObjectID = ObjectID, Direction = Direction, Location = CurrentLocation });
-
-
 
             cell = CurrentMap.GetCell(CurrentLocation);
 
@@ -187,7 +177,6 @@ namespace Server.MirObjects.Monsters
 
             return true;
         }
-
 
         public override Packet GetInfo()
         {

@@ -64,7 +64,7 @@ namespace Client.MirScenes.Dialogs
                 Parent = this,
                 PressedIndex = 116,
                 Sound = SoundList.ButtonA,
-                Hint = "允许/禁止拜师请求",
+                Hint = GameLanguage.MentorRequests
             };
             AllowButton.Click += (o, e) =>
             {
@@ -94,17 +94,17 @@ namespace Client.MirScenes.Dialogs
                 Parent = this,
                 PressedIndex = 215,
                 Sound = SoundList.ButtonA,
-                Hint = "添加师父",
+                Hint = GameLanguage.AddMentor
             };
             AddButton.Click += (o, e) =>
             {
                 if (MentorLevel != 0)
                 {
-                    GameScene.Scene.ChatDialog.ReceiveChat("你已经有师父了。", ChatType.System);
+                    GameScene.Scene.ChatDialog.ReceiveChat("You already have a Mentor.", ChatType.System);
                     return;
                 }
 
-                string message = "请输入你想要拜师的玩家名。";
+                string message = GameLanguage.MentorEnterName;
 
                 MirInputBox inputBox = new MirInputBox(message);
 
@@ -127,17 +127,17 @@ namespace Client.MirScenes.Dialogs
                 Parent = this,
                 PressedIndex = 218,
                 Sound = SoundList.ButtonA,
-                Hint = "取消师徒关系",
+                Hint = GameLanguage.RemoveMentorMentee
             };
             RemoveButton.Click += (o, e) =>
             {
                 if (MentorName == "")
                 {
-                    GameScene.Scene.ChatDialog.ReceiveChat("你并没有师徒关系。", ChatType.System);
+                    GameScene.Scene.ChatDialog.ReceiveChat(GameLanguage.NoMentorship, ChatType.System);
                     return;
                 }
 
-                MirMessageBox messageBox = new MirMessageBox(string.Format("取消师徒关系后一段时间内无法再次使用师徒功能,是否确定?"), MirMessageBoxButtons.YesNo);
+                MirMessageBox messageBox = new MirMessageBox(string.Format("Cancelling a Mentorship early will cause a cooldown. Are you sure?"), MirMessageBoxButtons.YesNo);
 
                 messageBox.YesButton.Click += (oo, ee) => Network.Enqueue(new C.CancelMentor { });
                 messageBox.NoButton.Click += (oo, ee) => { messageBox.Dispose(); };
@@ -181,7 +181,7 @@ namespace Client.MirScenes.Dialogs
                 NotControl = true,
                 Font = new Font(Settings.FontName, 7F),
                 Visible = false,
-                Text = "在线",
+                Text = "ONLINE",
             };
 
             StudentNameLabel = new MirLabel
@@ -219,7 +219,7 @@ namespace Client.MirScenes.Dialogs
                 NotControl = true,
                 Font = new Font(Settings.FontName, 7F),
                 Visible = false,
-                Text = "在线",
+                Text = "ONLINE",
             };
 
             MentorLabel = new MirLabel
@@ -232,7 +232,7 @@ namespace Client.MirScenes.Dialogs
                 Parent = this,
                 NotControl = true,
                 Font = new Font(Settings.FontName, 7F),
-                Text = "师父",
+                Text = "MENTOR",
             };
 
             StudentLabel = new MirLabel
@@ -245,7 +245,7 @@ namespace Client.MirScenes.Dialogs
                 Parent = this,
                 NotControl = true,
                 Font = new Font(Settings.FontName, 7F),
-                Text = "徒弟",
+                Text = "MENTEE",
             };
 
             MenteeEXPLabel = new MirLabel
@@ -263,17 +263,6 @@ namespace Client.MirScenes.Dialogs
 
 
 
-        }
-
-        public void Hide()
-        {
-            if (!Visible) return;
-            Visible = false;
-        }
-        public void Show()
-        {
-            if (Visible) return;
-            Visible = true;
         }
 
         public void UpdateInterface()
@@ -311,19 +300,19 @@ namespace Client.MirScenes.Dialogs
                     StudentOnlineLabel.Visible = false;
 
                 MenteeEXPLabel.Visible = true;
-                MenteeEXPLabel.Text = "徒弟经验: " + MenteeEXP;
+                MenteeEXPLabel.Text = "MENTEE EXP: " + MenteeEXP;
             }
             else
             {
                 MentorNameLabel.Text = MentorName;
-                MentorLevelLabel.Text = "等级 " + MentorLevel.ToString();
+                MentorLevelLabel.Text = "Lv " + MentorLevel.ToString();
                 if (MentorOnline)
                     MentorOnlineLabel.Visible = true;
                 else
                     MentorOnlineLabel.Visible = false;
 
                 StudentNameLabel.Text = GameScene.User.Name;
-                StudentLevelLabel.Text = "等级 " + GameScene.User.Level.ToString();
+                StudentLevelLabel.Text = "Lv " + GameScene.User.Level.ToString();
                 StudentOnlineLabel.Visible = false;
             }
         }

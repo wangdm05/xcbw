@@ -83,6 +83,7 @@ namespace Client.MirScenes.Dialogs
                 Parent = this,
                 PressedIndex = 116,
                 Sound = SoundList.ButtonA,
+                Hint = GameLanguage.GroupSwitch
             };
             SwitchButton.Click += (o, e) => Network.Enqueue(new C.SwitchGroup { AllowGroup = !AllowGroup });
 
@@ -95,6 +96,7 @@ namespace Client.MirScenes.Dialogs
                 Parent = this,
                 PressedIndex = 135,
                 Sound = SoundList.ButtonA,
+                Hint = GameLanguage.GroupAdd
             };
             AddButton.Click += (o, e) => AddMember();
 
@@ -107,6 +109,7 @@ namespace Client.MirScenes.Dialogs
                 Parent = this,
                 PressedIndex = 138,
                 Sound = SoundList.ButtonA,
+                Hint = GameLanguage.GroupRemove
             };
             DelButton.Click += (o, e) => DelMember();
 
@@ -161,12 +164,12 @@ namespace Client.MirScenes.Dialogs
         {
             if (GroupList.Count >= Globals.MaxGroup)
             {
-                GameScene.Scene.ChatDialog.ReceiveChat("你的队伍人数已满。", ChatType.System);
+                GameScene.Scene.ChatDialog.ReceiveChat("Your group already has the maximum number of members.", ChatType.System);
                 return;
             }
             if (GroupList.Count > 0 && GroupList[0] != MapObject.User.Name)
             {
-                GameScene.Scene.ChatDialog.ReceiveChat("你不是队长。", ChatType.System);
+                GameScene.Scene.ChatDialog.ReceiveChat("You are not the leader of your group.", ChatType.System);
                 return;
             }
 
@@ -177,17 +180,17 @@ namespace Client.MirScenes.Dialogs
         {
             if (GroupList.Count >= Globals.MaxGroup)
             {
-                GameScene.Scene.ChatDialog.ReceiveChat("你的队伍人数已满。", ChatType.System);
+                GameScene.Scene.ChatDialog.ReceiveChat("Your group already has the maximum number of members.", ChatType.System);
                 return;
             }
             if (GroupList.Count > 0 && GroupList[0] != MapObject.User.Name)
             {
 
-                GameScene.Scene.ChatDialog.ReceiveChat("你不是队长。", ChatType.System);
+                GameScene.Scene.ChatDialog.ReceiveChat("You are not the leader of your group.", ChatType.System);
                 return;
             }
 
-            MirInputBox inputBox = new MirInputBox("请输入你要组队的人的名字。");
+            MirInputBox inputBox = new MirInputBox(GameLanguage.GroupAddEnterName);
 
             inputBox.OKButton.Click += (o, e) =>
             {
@@ -201,11 +204,11 @@ namespace Client.MirScenes.Dialogs
             if (GroupList.Count > 0 && GroupList[0] != MapObject.User.Name)
             {
 
-                GameScene.Scene.ChatDialog.ReceiveChat("你不是队长。", ChatType.System);
+                GameScene.Scene.ChatDialog.ReceiveChat("You are not the leader of your group.", ChatType.System);
                 return;
             }
 
-            MirInputBox inputBox = new MirInputBox("请输入你要组队的人的名字。");
+            MirInputBox inputBox = new MirInputBox(GameLanguage.GroupRemoveEnterName);
 
             inputBox.OKButton.Click += (o, e) =>
             {
@@ -213,18 +216,6 @@ namespace Client.MirScenes.Dialogs
                 inputBox.Dispose();
             };
             inputBox.Show();
-        }
-
-
-        public void Hide()
-        {
-            if (!Visible) return;
-            Visible = false;
-        }
-        public void Show()
-        {
-            if (Visible) return;
-            Visible = true;
         }
     }
 }

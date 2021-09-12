@@ -68,18 +68,19 @@ namespace Server.MirObjects.Monsters
                 ResetStats();
             }
 
-            damage += attacker.AttackBonus;
+            damage += attacker.Stats[Stat.AttackBonus];
+
             int armour = 0;
             //deal with trainers defense
             switch (type)
             {
                 case DefenceType.AC:
                 case DefenceType.ACAgility:
-                    armour = GetDefencePower(MinAC, MaxAC);
+                    armour = GetAttackPower(Stats[Stat.MinAC], Stats[Stat.MaxAC]);
                     break;
                 case DefenceType.MAC:
                 case DefenceType.MACAgility:
-                    armour = GetDefencePower(MinMAC, MaxMAC);
+                    armour = GetAttackPower(Stats[Stat.MinMAC], Stats[Stat.MaxMAC]);
                     break;
             }
             if (armour >= damage)
@@ -87,7 +88,10 @@ namespace Server.MirObjects.Monsters
                 BroadcastDamageIndicator(DamageType.Miss);
                 return 0;
             }
+
             damage -= armour;
+
+            attacker.GatherElement();
 
             if (_currentAttacker == null)
                 _StartTime = Envir.Time;
@@ -119,11 +123,11 @@ namespace Server.MirObjects.Monsters
             {
                 case DefenceType.AC:
                 case DefenceType.ACAgility:
-                    armour = GetDefencePower(MinAC, MaxAC);
+                    armour = GetAttackPower(Stats[Stat.MinAC], Stats[Stat.MaxAC]);
                     break;
                 case DefenceType.MAC:
                 case DefenceType.MACAgility:
-                    armour = GetDefencePower(MinMAC, MaxMAC);
+                    armour = GetAttackPower(Stats[Stat.MinMAC], Stats[Stat.MaxMAC]);
                     break;
             }
             if (armour >= damage)
@@ -172,7 +176,6 @@ namespace Server.MirObjects.Monsters
             if (_currentAttacker != null && (_currentAttacker != attacker || _currentAttacker != attacker.Master))
             {
                 OutputAverage();
-                ResetStats();
             }
             
             if (_currentAttacker == null)
@@ -186,7 +189,7 @@ namespace Server.MirObjects.Monsters
             if (_StartTime == 0)
                 timespend = 1000;
             double Dps = _totalDamage / (timespend * 0.001);
-            _currentAttacker.ReceiveChat(string.Format("{1}造成{0}伤害, Dps: {2:#.00}。", damage, attacker is MonsterObject ? "你的宠物施毒" : "你施毒", Dps), ChatType.Trainer);
+            _currentAttacker.ReceiveChat(string.Format("{1} inflicted {0} Damage, Dps: {2:#.00}.", damage, attacker is MonsterObject ? "Your pets poison" : "Your poison", Dps), ChatType.Trainer);
             Poisoned = true;
         }
 
@@ -199,7 +202,7 @@ namespace Server.MirObjects.Monsters
             if (CanRegen)
             {
                 RegenTime = Envir.Time + RegenDelay;
-                healthRegen += (int)(MaxHP * 0.022F) + 1;
+                healthRegen += (int)(Stats[Stat.HP] * 0.022F) + 1;
             }
             if (healthRegen > 0) ChangeHP(healthRegen);
         }
@@ -213,7 +216,7 @@ namespace Server.MirObjects.Monsters
             if (_StartTime == 0)
                 timespend = 1000;
             double Dps = _totalDamage / (timespend * 0.001);
-            _currentAttacker.ReceiveChat(string.Format("你的毒药{0}已消失, Dps: {1:#.00}。", amount, Dps), ChatType.Trainer);
+            _currentAttacker.ReceiveChat(string.Format("Your poison stopped {0} regen, Dps: {1:#.00}.", amount, Dps), ChatType.Trainer);
         }
 
 
@@ -223,26 +226,26 @@ namespace Server.MirObjects.Monsters
             switch (type)
             {
                 case DefenceType.ACAgility:
-                    output = "物理敏捷";
+                    output = "Physical Agility";
                     break;
                 case DefenceType.AC:
-                    output = "物理";
+                    output = "Physicial";
                     break;
                 case DefenceType.MACAgility:
-                    output = "魔力敏捷";
+                    output = "Magical Agility";
                     break;
                 case DefenceType.MAC:
-                    output = "魔力";
+                    output = "Magic";
                     break;
                 case DefenceType.Agility:
-                    output = "敏捷";
+                    output = "Agility";
                     break;
             }
             long timespend = Math.Max(1000,(Envir.Time - _StartTime));//avoid division by 0
             if (_StartTime == 0)
                 timespend = 1000;
             double Dps = _totalDamage / (timespend * 0.001);
-            _currentAttacker.ReceiveChat(string.Format("{3}造成{0}{1}伤害, Dps: {2:#.00}。", damage, output, Dps, Pet? "你的宠物": "你"), ChatType.Trainer);
+            _currentAttacker.ReceiveChat(string.Format("{3} inflicted {0} {1} Damage, Dps: {2:#.00}.", damage, output, Dps, Pet? "Your pet": "You"), ChatType.Trainer);
         }
 
         private void ResetStats()
@@ -263,7 +266,7 @@ namespace Server.MirObjects.Monsters
             if (_StartTime == 0)
                 timespend = 1000;
             double Dps = _totalDamage / (timespend * 0.001);
-            _currentAttacker.ReceiveChat(string.Format("平均对训练师造成{0}点伤害, Dps: {1:#.00}。", (int)(_totalDamage / _hitCount),Dps), ChatType.Trainer);
+            _currentAttacker.ReceiveChat(string.Format("{0} Average Damage inflicted on the trainer, Dps: {1:#.00}.", (int)(_totalDamage / _hitCount),Dps), ChatType.Trainer);
         }
     }
 }

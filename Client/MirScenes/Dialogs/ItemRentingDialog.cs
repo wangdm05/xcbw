@@ -150,7 +150,7 @@ namespace Client.MirScenes.Dialogs
 
         public void InputRentalPeroid()
         {
-            var inputBox = new MirInputBox($"你想把{RentalItem.Name}租给{GameScene.Scene.GuestItemRentDialog.GuestName}多久? (1-30天)。");
+            var inputBox = new MirInputBox($"How long would you like to rent {RentalItem.FriendlyName} to {GameScene.Scene.GuestItemRentDialog.GuestName} for? (1 to 30 days).");
 
             inputBox.OKButton.Click += (o1, e1) =>
             {
@@ -172,7 +172,7 @@ namespace Client.MirScenes.Dialogs
         public void RefreshInterface()
         {
             _nameLabel.Text = GameScene.User.Name;
-            _rentalPeriodLabel.Text = $"租期: {RentalPeriod}天";
+            _rentalPeriodLabel.Text = $"Rental Period: {RentalPeriod} Days";
 
             GameScene.Scene.GuestItemRentDialog.RefreshInterface();
             GameScene.Scene.GuestItemRentingDialog.RefreshInterface();
@@ -217,16 +217,6 @@ namespace Client.MirScenes.Dialogs
             _lockButton.Index = 250;
             _lockButton.Enabled = true;
             _setRentalPeriodButton.Enabled = true;
-        }
-
-        private void Hide()
-        {
-            Visible = false;
-        }
-
-        private void Show()
-        {
-            Visible = true;
         }
     }
 
@@ -297,7 +287,7 @@ namespace Client.MirScenes.Dialogs
                 Size = new Size(150, 14),
                 DrawFormat = TextFormatFlags.Left | TextFormatFlags.VerticalCenter,
                 NotControl = true,
-                Text = "租期: 0天"
+                Text = "Rental Period: 0 Days"
             };
 
             _guestItemCell = new MirItemCell
@@ -314,7 +304,7 @@ namespace Client.MirScenes.Dialogs
         public void RefreshInterface()
         {
             _nameLabel.Text = _guestName;
-            _rentalPeriodLabel.Text = $"租期: {GuestRentalPeriod}天";
+            _rentalPeriodLabel.Text = $"Rental Period: {GuestRentalPeriod} Days";
 
             if (GuestLoanItem != null)
                 GameScene.Bind(GuestLoanItem);
@@ -346,16 +336,6 @@ namespace Client.MirScenes.Dialogs
         private void Unlock()
         {
             _lockButton.Index = 250;
-        }
-
-        private void Hide()
-        {
-            Visible = false;
-        }
-
-        public void Show()
-        {
-            Visible = true;
         }
     }
 }

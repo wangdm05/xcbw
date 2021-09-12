@@ -393,7 +393,7 @@ namespace Client.MirScenes.Dialogs
                 if (GameScene.User.IntelligentCreatures[selectedCreature].CreatureRules.CanProduceBlackStone)
                     HoverLabel.Text = string.Format("{0}", Functions.PrintTimeSpanFromSeconds(blackstoneProduceTime - GameScene.User.IntelligentCreatures[selectedCreature].BlackstoneTime));
                 else
-                    HoverLabel.Text = "没有生产。";
+                    HoverLabel.Text = "No Production.";
             }
 
             Rectangle section = new Rectangle
@@ -450,7 +450,7 @@ namespace Client.MirScenes.Dialogs
 
             if (sender == CreatureRenameButton)
             {
-                MirInputBox inputBox = new MirInputBox("请为这个宠物起一个新名字。");
+                MirInputBox inputBox = new MirInputBox("Please enter a new name for the creature.");
                 inputBox.InputTextBox.Text = GameScene.User.IntelligentCreatures[selectedCreature].CustomName;
                 inputBox.OKButton.Click += (o1, e1) =>
                 {
@@ -488,12 +488,12 @@ namespace Client.MirScenes.Dialogs
             }
             if (sender == ReleaseButton)
             {
-                MirInputBox verificationBox = new MirInputBox("请输入宠物名字进行验证。");
+                MirInputBox verificationBox = new MirInputBox("Please enter the creature's name for verification.");
                 verificationBox.OKButton.Click += (o1, e1) =>
                 {
                     if (String.Compare(verificationBox.InputTextBox.Text, GameScene.User.IntelligentCreatures[selectedCreature].CustomName, StringComparison.OrdinalIgnoreCase) != 0)
                     {
-                        GameScene.Scene.ChatDialog.ReceiveChat("验证失败!!", ChatType.System);
+                        GameScene.Scene.ChatDialog.ReceiveChat("Verification Failed!!", ChatType.System);
                     }
                     else
                     {
@@ -719,20 +719,32 @@ namespace Client.MirScenes.Dialogs
             int selectedCreature = BeforeAfterDraw();
             if (selectedCreature < 0) return;
 
+            var rules = GameScene.User.IntelligentCreatures[selectedCreature].CreatureRules;
+
+            var semi = rules.SemiAutoPickupEnabled ? string.Format("{0}x{0} {1}{2}{3}", rules.AutoPickupRange, rules.AutoPickupEnabled ? "auto/" : "", rules.SemiAutoPickupEnabled ? "semi-auto" : "", rules.MousePickupEnabled ? ", " : "") : "";
+            var mouse = rules.SemiAutoPickupEnabled ? string.Format("{0}x{0} mouse", rules.MousePickupRange) : "";
+
             CreatureName.Text = GameScene.User.IntelligentCreatures[selectedCreature].CustomName;
-            CreatureInfo.Text = GameScene.User.IntelligentCreatures[selectedCreature].CreatureRules.Info;
-            CreatureInfo1.Text = GameScene.User.IntelligentCreatures[selectedCreature].CreatureRules.Info1;
-            CreatureInfo2.Text = GameScene.User.IntelligentCreatures[selectedCreature].CreatureRules.Info2;
+            CreatureInfo.Text = string.Format("Can pickup items ({0}{1}).", semi, mouse);
+            CreatureInfo1.Text = rules.CanProduceBlackStone ? "Can produce BlackStones." : "";
+            CreatureInfo2.Text = rules.CanProduceBlackStone ? "Can produce Pearls, used to buy Creature items." : "";
+
             //Expire
-            if (GameScene.User.IntelligentCreatures[selectedCreature].ExpireTime == -9999)
-                CreatureDeadline.Text = "过期：从不";
+            if (GameScene.User.IntelligentCreatures[selectedCreature].Expire == DateTime.MinValue)
+            {
+                CreatureDeadline.Text = string.Format(GameLanguage.ExpireNever);
+            }
             else
-                CreatureDeadline.Text = string.Format("过期: {0}", Functions.PrintTimeSpanFromSeconds(GameScene.User.IntelligentCreatures[selectedCreature].ExpireTime));
-            //
+            {
+                var seconds = (GameScene.User.IntelligentCreatures[selectedCreature].Expire - DateTime.Now).TotalSeconds;
+
+                CreatureDeadline.Text = string.Format(GameLanguage.Expire, Functions.PrintTimeSpanFromSeconds(seconds));
+            }
+
             if (GameScene.User.IntelligentCreatures[selectedCreature].MaintainFoodTime == 0)
                 CreatureMaintainFoodBuff.Text = "0";
             else
-                CreatureMaintainFoodBuff.Text = string.Format("食物Buff: {0}", Functions.PrintTimeSpanFromSeconds(GameScene.User.IntelligentCreatures[selectedCreature].MaintainFoodTime));
+                CreatureMaintainFoodBuff.Text = string.Format("FoodBuff: {0}", Functions.PrintTimeSpanFromSeconds(GameScene.User.IntelligentCreatures[selectedCreature].MaintainFoodTime));
 
             int StartIndex = CreatureButtons[SelectedCreatureSlot].AnimDefaultIdx;
             int AnimCount = CreatureButtons[SelectedCreatureSlot].AnimDefaultCount;
@@ -801,7 +813,7 @@ namespace Client.MirScenes.Dialogs
             if (GameScene.Scene.IntelligentCreatureOptionsDialog.Visible) GameScene.Scene.IntelligentCreatureOptionsDialog.BringToFront();
         }
 
-        public void Hide()
+        public override void Hide()
         {
             if (!Visible) return;
             if (GameScene.Scene.IntelligentCreatureOptionsGradeDialog.Visible) GameScene.Scene.IntelligentCreatureOptionsGradeDialog.Hide();
@@ -809,14 +821,16 @@ namespace Client.MirScenes.Dialogs
             AnimSwitched = false;
             AnimNeedSwitch = false;
             Visible = false;
+
+            Network.Enqueue(new C.RequestIntelligentCreatureUpdates { Update = false });
         }
-        public void Show()
+        public override void Show()
         {
             if (Visible) return;
 
             if (!GameScene.User.IntelligentCreatures.Any())
             {
-                MirMessageBox messageBox = new MirMessageBox("你没有宠物。", MirMessageBoxButtons.OK);
+                MirMessageBox messageBox = new MirMessageBox(GameLanguage.NoCreatures, MirMessageBoxButtons.OK);
                 messageBox.Show();
                 return;
             }
@@ -826,6 +840,7 @@ namespace Client.MirScenes.Dialogs
                 CreatureButtons[0].SelectButton();
             }
 
+            Network.Enqueue(new C.RequestIntelligentCreatureUpdates { Update = true });
 
             Visible = true;
             showing = true;
@@ -835,6 +850,7 @@ namespace Client.MirScenes.Dialogs
             RefreshDialog();
         }
     }
+
     public sealed class CreatureButton : MirControl
     {
         public MirImageControl SelectionImage;
@@ -1085,6 +1101,14 @@ namespace Client.MirScenes.Dialogs
                     AnimExCount = 8;
                     AnimExDelay = 300;
                     break;
+                case IntelligentCreatureType.MedicalRat:
+                    AnimDefaultIdx = 1550;
+                    AnimDefaultCount = 8;
+                    AnimDefaultDelay = 300;
+                    AnimExIdx = 1560;
+                    AnimExCount = 16;
+                    AnimExDelay = 300;
+                    break;
                 case IntelligentCreatureType.None:
                     AnimDefaultIdx = 539;
                     AnimDefaultCount = 1;
@@ -1225,11 +1249,6 @@ namespace Client.MirScenes.Dialogs
             }
         }
 
-        public void Hide()
-        {
-            if (!Visible) return;
-            Visible = false;
-        }
         public void Show(IntelligentCreatureItemFilter filter)
         {
             if (Visible) return;
@@ -1351,11 +1370,6 @@ namespace Client.MirScenes.Dialogs
             GradeLabel.ForeColour = GradeNameColor(GradeType);
         }
 
-        public void Hide()
-        {
-            if (!Visible) return;
-            Visible = false;
-        }
 
         public void Show(ItemGrade grade)
         {

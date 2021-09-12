@@ -210,16 +210,16 @@ namespace Client.MirControls
                     CreditCost = GameScene.Credit;
                     if (CreditCost == 0)
                     {
-                        messageBox = new MirMessageBox(string.Format("你确定要花费{2}金币购买{1}x{0}({3})吗?", Item.Info.FriendlyName, Quantity, GoldCost, Item.Count), MirMessageBoxButtons.YesNo);
+                        messageBox = new MirMessageBox(string.Format("Are you sure would you like to buy {1} x {0}({3}) for {2} Gold?", Item.Info.FriendlyName, Quantity, GoldCost, Item.Count), MirMessageBoxButtons.YesNo);
                     }
                     else
                     {
-                        messageBox = new MirMessageBox(string.Format("你确定要花费{2}Credit和{3}金币购买{1}x{0}({4})吗?", Item.Info.FriendlyName, Quantity, CreditCost, GoldCost, Item.Count), MirMessageBoxButtons.YesNo);
+                        messageBox = new MirMessageBox(string.Format("Are you sure would you like to buy {1} x {0}({4}) for {2} Credit and {3} Gold?", Item.Info.FriendlyName, Quantity, CreditCost, GoldCost, Item.Count), MirMessageBoxButtons.YesNo);
                     }
                 }
                 else
                 {
-                    GameScene.Scene.ChatDialog.ReceiveChat("你没有足够的货币购买这个物品。", ChatType.System);
+                    GameScene.Scene.ChatDialog.ReceiveChat(GameLanguage.LowGold, ChatType.System);
                     return;
                 }
 
@@ -256,7 +256,7 @@ namespace Client.MirControls
 
         public void UpdateText()
         {
-            nameLabel.Text = (Item.Info.Type == ItemType.Pets && Item.Info.Shape == 26 && Item.Info.Effect != 7) ? "WonderDrug" : Item.Info.FriendlyName;
+            nameLabel.Text = Item.Info.FriendlyName;
             nameLabel.Text = nameLabel.Text.Length > 17 ? nameLabel.Text.Substring(0, 17) : nameLabel.Text;
             nameLabel.ForeColour = GameScene.Scene.GradeNameColor(Item.Info.Grade);
             quantity.Text = Quantity.ToString();

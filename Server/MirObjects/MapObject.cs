@@ -12,12 +12,17 @@ namespace Server.MirObjects
 {
     public abstract class MapObject
     {
-        protected static Envir Envir
+        protected static MessageQueue MessageQueue
         {
-            get { return SMain.Envir; }
+            get { return MessageQueue.Instance; }
         }
 
-        public readonly uint ObjectID = SMain.Envir.ObjectID;
+        protected static Envir Envir
+        {
+            get { return Envir.Main; }
+        }
+
+        public readonly uint ObjectID = Envir.ObjectID;
 
         public abstract ObjectType Race { get; }
 
@@ -28,7 +33,6 @@ namespace Server.MirObjects
 
         private int SpawnThread;
 
-        //Position
         private Map _currentMap;
         public Map CurrentMap
         {
@@ -46,30 +50,19 @@ namespace Server.MirObjects
 
         public abstract ushort Level { get; set; }
 
-        public abstract uint Health { get; }
-        public abstract uint MaxHealth { get; }
+        public abstract int Health { get; }
+        public abstract int MaxHealth { get; }
         public byte PercentHealth
         {
             get { return (byte) (Health/(float) MaxHealth*100); }
-
         }
 
-        public ushort MinAC, MaxAC, MinMAC, MaxMAC;
-        public ushort MinDC, MaxDC, MinMC, MaxMC, MinSC, MaxSC;
-
-        public byte Accuracy, Agility, Light;
-        public sbyte ASpeed, Luck;
+        public byte Light;
         public int AttackSpeed;
 
-        public ushort CurrentHandWeight,
-                   MaxHandWeight,
+        public int CurrentHandWeight,
                    CurrentWearWeight,
-                   MaxWearWeight;
-
-        public ushort CurrentBagWeight,
-                      MaxBagWeight;
-
-        public byte MagicResist, PoisonResist, HealthRecovery, SpellRecovery, PoisonRecovery, CriticalRate, CriticalDamage, Holy, Freezing, PoisonAttack;
+                   CurrentBagWeight;
 
         public long CellTime, BrownTime, PKPointTime, LastHitTime, EXPOwnerTime;
         public Color NameColour = Color.White;
@@ -81,9 +74,6 @@ namespace Server.MirObjects
         public virtual int PKPoints { get; set; }
 
         public ushort PotHealthAmount, PotManaAmount, HealAmount, VampAmount;
-        //public bool HealthChanged;
-
-        public float ItemDropRateOffset = 0, GoldDropRateOffset = 0;
 
         public bool CoolEye;
         private bool _hidden;
@@ -160,6 +150,8 @@ namespace Server.MirObjects
         public long ExpireTime, OwnerTime, OperateTime;
         public int OperateDelay = 100;
 
+        public Stats Stats;
+
         public List<MonsterObject> Pets = new List<MonsterObject>();
         public List<Buff> Buffs = new List<Buff>();
 
@@ -168,7 +160,17 @@ namespace Server.MirObjects
         public virtual AttackMode AMode { get; set; }
 
         public virtual PetMode PMode { get; set; }
-        public bool InSafeZone;
+
+        private bool _inSafeZone;
+        public bool InSafeZone {
+            get { return _inSafeZone; }
+            set
+            {
+                if (_inSafeZone == value) return;
+                _inSafeZone = value;
+                OnSafeZoneChanged();
+            }
+        }
 
         public float ArmourRate, DamageRate; //recieved not given
 
@@ -205,15 +207,16 @@ namespace Server.MirObjects
             if (Target != null && (Target.Node == null || Target.Dead)) Target = null;
             if (Owner != null && Owner.Node == null) Owner = null;
 
-            if (Envir.Time > PKPointTime && PKPoints > 0)
+            if (PKPoints > 0 && Envir.Time > PKPointTime)
             {
                 PKPointTime = Envir.Time + Settings.PKDelay * Settings.Second;
                 PKPoints--;
             }
-            
-            if (LastHitter != null && Envir.Time > LastHitTime)
-                LastHitter = null;
 
+            if (LastHitter != null && Envir.Time > LastHitTime)
+            {
+                LastHitter = null;
+            }
 
             if (EXPOwner != null && Envir.Time > EXPOwnerTime)
             {
@@ -228,6 +231,23 @@ namespace Server.MirObjects
             }
         }
 
+        public virtual void OnSafeZoneChanged()
+        {
+            for (int i = 0; i < Buffs.Count; i++)
+            {
+                if (!Buffs[i].Properties.HasFlag(BuffProperty.PauseInSafeZone)) continue;
+
+                if (InSafeZone)
+                {
+                    PauseBuff(Buffs[i]);
+                }
+                else
+                {
+                    UnpauseBuff(Buffs[i]);
+                }
+            }
+        }
+
         public abstract void SetOperateTime();
 
         public int GetAttackPower(int min, int max)
@@ -235,18 +255,30 @@ namespace Server.MirObjects
             if (min < 0) min = 0;
             if (min > max) max = min;
 
-            if (Luck > 0)
+            if (Stats[Stat.Luck] > 0)
             {
-                if (Luck > Envir.Random.Next(Settings.MaxLuck))
+                if (Stats[Stat.Luck] > Envir.Random.Next(Settings.MaxLuck))
                     return max;
             }
-            else if (Luck < 0)
+            else if (Stats[Stat.Luck] < 0)
             {
-                if (Luck < -Envir.Random.Next(Settings.MaxLuck))
+                if (Stats[Stat.Luck] < -Envir.Random.Next(Settings.MaxLuck))
                     return min;
             }
 
             return Envir.Random.Next(min, max + 1);
+        }
+
+        public int GetRangeAttackPower(int min, int max, int range)
+        {
+            //maxRange = highest possible damage
+            //minRange = lowest possible damage
+
+            decimal x = ((decimal)min / (Globals.MaxAttackRange)) * (Globals.MaxAttackRange - range);
+
+            min -= (int)Math.Floor(x);
+
+            return GetAttackPower(min, max);
         }
 
         public int GetDefencePower(int min, int max)
@@ -297,6 +329,7 @@ namespace Server.MirObjects
         public bool CanFly(Point target)
         {
             Point location = CurrentLocation;
+
             while (location != target)
             {
                 MirDirection dir = Functions.DirectionFromPoint(location, target);
@@ -306,7 +339,6 @@ namespace Server.MirObjects
                 if (location.X < 0 || location.Y < 0 || location.X >= CurrentMap.Width || location.Y >= CurrentMap.Height) return false;
 
                 if (!CurrentMap.GetCell(location).Valid) return false;
-
             }
 
             return true;
@@ -320,6 +352,7 @@ namespace Server.MirObjects
                 SpawnThread = CurrentMap.Thread;
                 NodeThreaded = Envir.MobThreads[SpawnThread].ObjectsList.AddLast(this);
             }
+
             OperateTime = Envir.Time + Envir.Random.Next(OperateDelay);
 
             InSafeZone = CurrentMap != null && CurrentMap.GetSafeZone(CurrentLocation) != null;
@@ -394,12 +427,105 @@ namespace Server.MirObjects
             return;
         } 
 
+        public bool IsAttackTarget(MapObject attacker)
+        {
+            switch (attacker.Race)
+            {
+                case ObjectType.Player:
+                    return IsAttackTarget((PlayerObject)attacker);
+                case ObjectType.Monster:
+                    return IsAttackTarget((MonsterObject)attacker);
+                default:
+                    throw new NotSupportedException();
+            }
+        }
+
         public abstract bool IsAttackTarget(PlayerObject attacker);
         public abstract bool IsAttackTarget(MonsterObject attacker);
         public abstract int Attacked(PlayerObject attacker, int damage, DefenceType type = DefenceType.ACAgility, bool damageWeapon = true);
         public abstract int Attacked(MonsterObject attacker, int damage, DefenceType type = DefenceType.ACAgility);
 
+        public virtual int GetArmour(DefenceType type, MapObject attacker, out bool hit)
+        {
+            var armour = 0;
+            hit = true;
+            switch (type)
+            {
+                case DefenceType.ACAgility:
+                    if (Envir.Random.Next(Stats[Stat.Agility] + 1) > attacker.Stats[Stat.Accuracy])
+                    {
+                        BroadcastDamageIndicator(DamageType.Miss);
+                        hit = false;
+                    }
+                    armour = GetDefencePower(Stats[Stat.MinAC], Stats[Stat.MaxAC]);
+                    break;
+                case DefenceType.AC:
+                    armour = GetDefencePower(Stats[Stat.MinAC], Stats[Stat.MaxAC]);
+                    break;
+                case DefenceType.MACAgility:
+                    if (Envir.Random.Next(Settings.MagicResistWeight) < Stats[Stat.MagicResist])
+                    {
+                        BroadcastDamageIndicator(DamageType.Miss);
+                        hit = false;
+                    }
+                    if (Envir.Random.Next(Stats[Stat.Agility] + 1) > attacker.Stats[Stat.Accuracy])
+                    {
+                        BroadcastDamageIndicator(DamageType.Miss);
+                        hit = false;
+                    }
+                    armour = GetDefencePower(Stats[Stat.MinMAC], Stats[Stat.MaxMAC]);
+                    break;
+                case DefenceType.MAC:
+                    if (Envir.Random.Next(Settings.MagicResistWeight) < Stats[Stat.MagicResist])
+                    {
+                        BroadcastDamageIndicator(DamageType.Miss);
+                        hit = false;
+                    }
+                    armour = GetDefencePower(Stats[Stat.MinMAC], Stats[Stat.MaxMAC]);
+                    break;
+                case DefenceType.Agility:
+                    if (Envir.Random.Next(Stats[Stat.Agility] + 1) > attacker.Stats[Stat.Accuracy])
+                    {
+                        BroadcastDamageIndicator(DamageType.Miss);
+                        hit = false;
+                    }
+                    break;
+            }
+            return armour;
+        }
+
+        public virtual void ApplyNegativeEffects(PlayerObject attacker, DefenceType type, ushort levelOffset)
+        {
+            if (attacker.SpecialMode.HasFlag(SpecialItemMode.Paralize) && type != DefenceType.MAC && type != DefenceType.MACAgility && 1 == Envir.Random.Next(1, 15))
+            {
+                ApplyPoison(new Poison { PType = PoisonType.Paralysis, Duration = 5, TickSpeed = 1000 }, attacker);
+            }
+            if ((attacker.Stats[Stat.Freezing] > 0) && (Settings.PvpCanFreeze) && type != DefenceType.MAC && type != DefenceType.MACAgility)
+            {
+                if ((Envir.Random.Next(Settings.FreezingAttackWeight) < attacker.Stats[Stat.Freezing]) && (Envir.Random.Next(levelOffset) == 0))
+                    ApplyPoison(new Poison { PType = PoisonType.Slow, Duration = Math.Min(10, (3 + Envir.Random.Next(attacker.Stats[Stat.Freezing]))), TickSpeed = 1000 }, attacker);
+            }
+            if (attacker.Stats[Stat.PoisonAttack] > 0 && type != DefenceType.MAC && type != DefenceType.MACAgility)
+            {
+                if ((Envir.Random.Next(Settings.PoisonAttackWeight) < attacker.Stats[Stat.PoisonAttack]) && (Envir.Random.Next(levelOffset) == 0))
+                    ApplyPoison(new Poison { PType = PoisonType.Green, Duration = 5, TickSpeed = 1000, Value = Math.Min(10, 3 + Envir.Random.Next(attacker.Stats[Stat.PoisonAttack])) }, attacker);
+            }
+        }
+
         public abstract int Struck(int damage, DefenceType type = DefenceType.ACAgility);
+
+        public bool IsFriendlyTarget(MapObject ally)
+        {
+            switch (ally.Race)
+            {
+                case ObjectType.Player:
+                    return IsFriendlyTarget((PlayerObject)ally);
+                case ObjectType.Monster:
+                    return IsFriendlyTarget((MonsterObject)ally);
+                default:
+                    throw new NotSupportedException();
+            }
+        }
 
         public abstract bool IsFriendlyTarget(PlayerObject ally);
         public abstract bool IsFriendlyTarget(MonsterObject ally);
@@ -426,64 +552,170 @@ namespace Server.MirObjects
         public virtual bool Harvest(PlayerObject player) { return false; }
 
         public abstract void ApplyPoison(Poison p, MapObject Caster = null, bool NoResist = false, bool ignoreDefence = true);
-        public virtual void AddBuff(Buff b)
+
+        public virtual Buff AddBuff(BuffType type, MapObject owner, int duration, Stats stats, bool refreshStats = true, params int[] values)
         {
-            switch (b.Type)
+            if (!HasBuff(type, out Buff buff))
             {
-                case BuffType.MoonLight:
-                case BuffType.Hiding:
-                case BuffType.DarkBody:
-                    Hidden = true;
+                buff = new Buff(type)
+                {
+                    Caster = owner,
+                    ObjectID = ObjectID,
+                    ExpireTime = Envir.Time + duration,
+                    Stats = stats
+                };
 
-                    if (b.Type == BuffType.MoonLight || b.Type == BuffType.DarkBody) Sneaking = true;
+                if (buff.Properties.HasFlag(BuffProperty.PauseInSafeZone) && InSafeZone)
+                {
+                    buff.ExpireTime -= Envir.Time;
+                    buff.Paused = true;
+                }
 
-                    for (int y = CurrentLocation.Y - Globals.DataRange; y <= CurrentLocation.Y + Globals.DataRange; y++)
-                    {
-                        if (y < 0) continue;
-                        if (y >= CurrentMap.Height) break;
-
-                        for (int x = CurrentLocation.X - Globals.DataRange; x <= CurrentLocation.X + Globals.DataRange; x++)
+                Buffs.Add(buff);
+            }
+            else
+            {
+                switch (buff.StackType)
+                {
+                    case BuffStackType.ResetDuration:
                         {
-                            if (x < 0) continue;
-                            if (x >= CurrentMap.Width) break;
-                            if (x < 0 || x >= CurrentMap.Width) continue;
-
-                            Cell cell = CurrentMap.GetCell(x, y);
-
-                            if (!cell.Valid || cell.Objects == null) continue;
-
-                            for (int i = 0; i < cell.Objects.Count; i++)
+                            buff.ExpireTime = Envir.Time + duration;
+                        }
+                        break;
+                    case BuffStackType.StackDuration:
+                        {
+                            buff.ExpireTime += duration;
+                        }
+                        break;
+                    case BuffStackType.StackStat:
+                        {
+                            if (stats != null)
                             {
-                                MapObject ob = cell.Objects[i];
-                                if (ob.Race != ObjectType.Monster) continue;
-
-                                if (ob.Target == this && (!ob.CoolEye /*|| ob.Level < Level*/)) ob.Target = null;
+                                buff.Stats.Add(stats);
                             }
                         }
-                    }
+                        break;
+                    case BuffStackType.StackStatAndDuration:
+                        {
+                            if (stats != null)
+                            {
+                                buff.Stats.Add(stats);
+                            }
+
+                            buff.ExpireTime += duration;
+                        }
+                        break;
+                    case BuffStackType.None:
+                    case BuffStackType.Infinite:
+                        break;
+                }
+            }
+
+            buff.Stats ??= new Stats();
+            buff.Values = values ?? new int[0];
+
+            switch (buff.Type)
+            {
+                case BuffType.MoonLight:
+                case BuffType.DarkBody:
+                    Hidden = true;
+                    Sneaking = true;
+                    HideFromTargets();
+                    break;
+                case BuffType.Hiding:
+                case BuffType.ClearRing:
+                    Hidden = true;
+                    HideFromTargets();
                     break;
             }
 
-
-            for (int i = 0; i < Buffs.Count; i++)
-            {
-                if (Buffs[i].Type != b.Type) continue;
-
-                Buffs[i] = b;
-                Buffs[i].Paused = false;
-                return;
-            }
-
-            Buffs.Add(b);
+            return buff;
         }
-        public void RemoveBuff(BuffType b)
+
+        public virtual void RemoveBuff(BuffType b)
         {
             for (int i = 0; i < Buffs.Count; i++)
             {
                 if (Buffs[i].Type != b) continue;
 
-                Buffs[i].Infinite = false;
+                Buffs[i].FlagForRemoval = true;
+                Buffs[i].Paused = false;
                 Buffs[i].ExpireTime = Envir.Time;
+
+                switch(b)
+                {
+                    case BuffType.Hiding:
+                    case BuffType.MoonLight:
+                    case BuffType.DarkBody:
+                        if (!HasAnyBuffs(b, BuffType.ClearRing, BuffType.Hiding, BuffType.MoonLight, BuffType.DarkBody))
+                        {
+                            Hidden = false;
+                        }
+                        break;
+                }
+            }
+        }
+
+        public bool HasBuff(BuffType type, out Buff buff)
+        {
+            for (int i = 0; i < Buffs.Count; i++)
+            {
+                if (Buffs[i].Type != type) continue;
+
+                buff = Buffs[i];
+                return true;
+            }
+
+            buff = null;
+            return false;
+        }
+
+        public bool HasAnyBuffs(BuffType exceptBuff, params BuffType[] types)
+        {
+            return Buffs.Select(x => x.Type).Except(new List<BuffType> { exceptBuff }).Intersect(types).Any();
+        }
+
+        public virtual void PauseBuff(Buff b)
+        {
+            if (b.Paused) return;
+
+            b.ExpireTime -= Envir.Time;
+            b.Paused = true;
+        }
+
+        public virtual void UnpauseBuff(Buff b)
+        {
+            if (!b.Paused) return;
+
+            b.ExpireTime += Envir.Time;
+            b.Paused = false;
+        }
+
+        protected void HideFromTargets()
+        {
+            for (int y = CurrentLocation.Y - Globals.DataRange; y <= CurrentLocation.Y + Globals.DataRange; y++)
+            {
+                if (y < 0) continue;
+                if (y >= CurrentMap.Height) break;
+
+                for (int x = CurrentLocation.X - Globals.DataRange; x <= CurrentLocation.X + Globals.DataRange; x++)
+                {
+                    if (x < 0) continue;
+                    if (x >= CurrentMap.Width) break;
+                    if (x < 0 || x >= CurrentMap.Width) continue;
+
+                    Cell cell = CurrentMap.GetCell(x, y);
+
+                    if (!cell.Valid || cell.Objects == null) continue;
+
+                    for (int i = 0; i < cell.Objects.Count; i++)
+                    {
+                        MapObject ob = cell.Objects[i];
+                        if (ob.Race != ObjectType.Monster) continue;
+
+                        if (ob.Target == this && (!ob.CoolEye || ob.Level < Level)) ob.Target = null;
+                    }
+                }
             }
         }
 
@@ -755,34 +987,64 @@ namespace Server.MirObjects
 
     public class Buff
     {
-        public BuffType Type;
+        protected static Envir Envir
+        {
+            get { return Envir.Main; }
+        }
+
+        private Dictionary<string, object> Data { get; set; } = new Dictionary<string, object>();
+
+        public BuffInfo Info;
         public MapObject Caster;
-        public bool Visible;
         public uint ObjectID;
         public long ExpireTime;
+
+        public Stats Stats;
+
         public int[] Values;
-        public bool Infinite;
 
-        public bool RealTime;
-        public DateTime RealTimeExpire;
-
+        public bool FlagForRemoval;
         public bool Paused;
 
-        public Buff() { }
+        public BuffType Type
+        {
+            get { return Info.Type; }
+        }
+
+        public BuffStackType StackType
+        {
+            get { return Info.StackType; }
+        }
+
+        public BuffProperty Properties
+        {
+            get { return Info.Properties; }
+        }
+
+        public Buff(BuffType type)
+        {
+            Info = Envir.GetBuffInfo(type);
+            Stats = new Stats();
+            Data = new Dictionary<string, object>();
+        }
 
         public Buff(BinaryReader reader)
         {
-            Type = (BuffType)reader.ReadByte();
+            var type = (BuffType)reader.ReadByte();
+
+            Info = Envir.GetBuffInfo(type);
+
             Caster = null;
-            Visible = reader.ReadBoolean();
+
+            if (Envir.LoadVersion < 88)
+            {
+                var visible = reader.ReadBoolean();
+            }
+
             ObjectID = reader.ReadUInt32();
             ExpireTime = reader.ReadInt64();
 
-            if (Envir.LoadVersion < 56)
-            {
-                Values = new int[] { reader.ReadInt32() };
-            }
-            else
+            if (Envir.LoadVersion <= 84)
             {
                 Values = new int[reader.ReadInt32()];
 
@@ -790,25 +1052,117 @@ namespace Server.MirObjects
                 {
                     Values[i] = reader.ReadInt32();
                 }
-            }
 
-            Infinite = reader.ReadBoolean();
+                if (Envir.LoadVersion < 88)
+                {
+                    var infinite = reader.ReadBoolean();
+                }
+
+                Stats = new Stats();
+                Data = new Dictionary<string, object>();
+            }
+            else
+            {
+                if (Envir.LoadVersion < 88)
+                {
+                    var stackable = reader.ReadBoolean();
+                }
+
+                Values = new int[0];
+                Stats = new Stats(reader);
+                Data = new Dictionary<string, object>();
+
+                int count = reader.ReadInt32();
+
+                for (int i = 0; i < count; i++)
+                {
+                    var key = reader.ReadString();
+                    var length = reader.ReadInt32();
+
+                    var array = new byte[length];
+
+                    for (int j = 0; j < array.Length; j++)
+                    {
+                        array[j] = reader.ReadByte();
+                    }
+
+                    Data[key] = Functions.DeserializeFromBytes(array);
+                }
+
+                if (Envir.LoadVersion > 86)
+                {
+                    count = reader.ReadInt32();
+
+                    Values = new int[count];
+
+                    for (int i = 0; i < count; i++)
+                    {
+                        Values[i] = reader.ReadInt32();
+                    }
+                }
+            }
         }
 
         public void Save(BinaryWriter writer)
         {
             writer.Write((byte)Type);
-            writer.Write(Visible);
             writer.Write(ObjectID);
             writer.Write(ExpireTime);
 
+            Stats.Save(writer);
+
+            writer.Write(Data.Count);
+
+            foreach (KeyValuePair<string, object> pair in Data)
+            {
+                var bytes = Functions.SerializeToBytes(pair.Value);
+
+                writer.Write(pair.Key);
+                writer.Write(bytes.Length);
+
+                for (int i = 0; i < bytes.Length; i++)
+                {
+                    writer.Write(bytes[i]);
+                }
+            }
+
             writer.Write(Values.Length);
+
             for (int i = 0; i < Values.Length; i++)
             {
                 writer.Write(Values[i]);
             }
+        }
 
-            writer.Write(Infinite);
+        public T Get<T>(string key)
+        {
+            if (!Data.TryGetValue(key, out object result))
+            {
+                return default;
+            }
+
+            return (T)result;
+        }
+
+        public void Set(string key, object val)
+        {
+            Data[key] = val;
+        }
+
+        public ClientBuff ToClientBuff()
+        {
+            return new ClientBuff
+            {
+                Type = Type,
+                Caster = Caster?.Name ?? "",
+                ObjectID = ObjectID,
+                Visible = Info.Visible,
+                Infinite = StackType == BuffStackType.Infinite,
+                Paused = Paused,
+                ExpireTime = ExpireTime,
+                Stats = new Stats(Stats),
+                Values = Values
+            };
         }
     }
 }

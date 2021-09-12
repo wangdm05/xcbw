@@ -144,12 +144,16 @@ namespace Client.MirScenes.Dialogs
                 Library = Libraries.Prguse,
                 Location = new Point(60, 241),
                 Parent = this,
-                Sound = SoundList.ButtonA
+                Sound = SoundList.ButtonA,
+                Hint = GameLanguage.AddFriend
             };
             AddButton.Click += (o, e) =>
             {
-                ;
-                string message = string.Format("请输入你想加入{0}的玩家名字。", _blockedTab ? "黑名单" : "好友列表");
+                string message = GameLanguage.FriendEnterAddName;
+                if (_blockedTab)
+                {
+                    message = GameLanguage.FriendEnterBlockName;
+                }
 
                 MirInputBox inputBox = new MirInputBox(message);
 
@@ -170,13 +174,14 @@ namespace Client.MirScenes.Dialogs
                 Library = Libraries.Prguse,
                 Location = new Point(88, 241),
                 Parent = this,
-                Sound = SoundList.ButtonA
+                Sound = SoundList.ButtonA,
+                Hint = GameLanguage.RemoveFriend,
             };
             RemoveButton.Click += (o, e) =>
             {
                 if (SelectedFriend == null) return;
 
-                MirMessageBox messageBox = new MirMessageBox(string.Format("你想要移除'{0}'吗?", SelectedFriend.Name), MirMessageBoxButtons.YesNo);
+                MirMessageBox messageBox = new MirMessageBox(string.Format("Are you sure you wish to remove '{0}'?", SelectedFriend.Name), MirMessageBoxButtons.YesNo);
 
                 messageBox.YesButton.Click += (o1, e1) =>
                 {
@@ -195,7 +200,9 @@ namespace Client.MirScenes.Dialogs
                 Library = Libraries.Prguse,
                 Location = new Point(116, 241),
                 Parent = this,
-                Sound = SoundList.ButtonA
+                Sound = SoundList.ButtonA,
+                Hint = GameLanguage.FriendMemo
+
             };
             MemoButton.Click += (o, e) =>
             {
@@ -213,7 +220,8 @@ namespace Client.MirScenes.Dialogs
                 Library = Libraries.Prguse,
                 Location = new Point(144, 241),
                 Parent = this,
-                Sound = SoundList.ButtonA
+                Sound = SoundList.ButtonA,
+                Hint = GameLanguage.FriendMail,
             };
             EmailButton.Click += (o, e) =>
             {
@@ -230,7 +238,8 @@ namespace Client.MirScenes.Dialogs
                 Library = Libraries.Prguse,
                 Location = new Point(172, 241),
                 Parent = this,
-                Sound = SoundList.ButtonA
+                Sound = SoundList.ButtonA,
+                Hint = GameLanguage.FriendWhisper
             };
             WhisperButton.Click += (o, e) =>
             {
@@ -238,7 +247,7 @@ namespace Client.MirScenes.Dialogs
 
                 if (!SelectedFriend.Online)
                 {
-                    GameScene.Scene.ChatDialog.ReceiveChat("玩家不在线", ChatType.System);
+                    GameScene.Scene.ChatDialog.ReceiveChat("Player is not online", ChatType.System);
                     return;
                 }
 
@@ -379,14 +388,14 @@ namespace Client.MirScenes.Dialogs
             return selectedIndex;
         }
 
-        public void Hide()
+        public override void Hide()
         {
             if (!Visible) return;
             Visible = false;
 
             GameScene.Scene.MemoDialog.Hide();
         }
-        public void Show()
+        public override void Show()
         {
             if (Visible) return;
             Visible = true;
@@ -546,12 +555,7 @@ namespace Client.MirScenes.Dialogs
             #endregion
         }
 
-        public void Hide()
-        {
-            if (!Visible) return;
-            Visible = false;
-        }
-        public void Show()
+        public override void Show()
         {
             if (Visible) return;
             Visible = true;

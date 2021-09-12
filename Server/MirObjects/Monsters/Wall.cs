@@ -28,6 +28,7 @@ namespace Server.MirObjects.Monsters
             }
         }
         protected override bool CanMove { get { return false; } }
+
         public override void Turn(MirDirection dir) { }
 
         public override bool Walk(MirDirection dir) { return false; }
@@ -53,9 +54,9 @@ namespace Server.MirObjects.Monsters
         public void RepairWall()
         {
             if (HP == 0)
-                Revive(MaxHP, false);
+                Revive(Stats[Stat.HP], false);
             else
-                SetHP(MaxHP);
+                SetHP(Stats[Stat.HP]);
 
             CheckDirection();
         }
@@ -78,7 +79,7 @@ namespace Server.MirObjects.Monsters
 
         protected int GetDamageLevel()
         {
-            int level = (int)Math.Round((double)(4 * HP) / MaxHP);
+            int level = (int)Math.Round((double)(4 * HP) / Stats[Stat.HP]);
 
             if (level < 1) level = 1;
 

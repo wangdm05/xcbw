@@ -5,7 +5,7 @@ using S = ServerPackets;
 
 namespace Server.MirObjects.Monsters
 {
-    class DigOutZombie : MonsterObject
+    public class DigOutZombie : MonsterObject
     {
         public bool Visible, DoneDigOut;
         public long VisibleTime, DigOutTime;
@@ -39,7 +39,6 @@ namespace Server.MirObjects.Monsters
         {
             Visible = false;
         }
-
 
         protected override void ProcessAI()
         {
@@ -100,7 +99,9 @@ namespace Server.MirObjects.Monsters
         protected override void ProcessSearch()
         {
             if (Visible)
+            {
                 base.ProcessSearch();
+            }
         }
 
         public override Packet GetInfo()

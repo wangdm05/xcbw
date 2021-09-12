@@ -15,7 +15,10 @@ namespace Server.MirObjects.Monsters
             get { return Route.Count > 0 && !Dead && Envir.Time > MoveTime && Envir.Time > ActionTime && Envir.Time > ShockTime; }
         }
 
-        protected internal ConquestArcher(MonsterInfo info) : base(info) { }
+        protected internal ConquestArcher(MonsterInfo info) 
+            : base(info) 
+        { 
+        }
 
         public override bool IsAttackTarget(MonsterObject attacker) { return false; }
 
@@ -49,7 +52,7 @@ namespace Server.MirObjects.Monsters
                                 case ObjectType.Player:
                                     PlayerObject playerob = (PlayerObject)ob;
                                     if (!ob.IsAttackTarget(this)) continue;
-                                    if (playerob.MyGuild != null && playerob.MyGuild.Conquest != null && Conquest.Info.Index == playerob.MyGuild.Conquest.Info.Index || ob.Hidden && (!CoolEye /*|| Level < ob.Level*/) || !Conquest.WarIsOn) continue;
+                                    if (playerob.MyGuild != null && playerob.MyGuild.Conquest != null && Conquest.Info.Index == playerob.MyGuild.Conquest.Info.Index || ob.Hidden && (!CoolEye || Level < ob.Level) || !Conquest.WarIsOn) continue;
                                     Target = ob;
                                     return;
                                 default:
